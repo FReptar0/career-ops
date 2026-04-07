@@ -17,6 +17,7 @@ These files contain your personal data, customizations, and work product. Update
 | `data/applications.md` | Your application tracker |
 | `data/pipeline.md` | Your URL inbox |
 | `data/scan-history.tsv` | Your scan history |
+| `data/memory.md` | Your cross-session memory (preferences, feedback, research cache) |
 | `reports/*` | Your evaluation reports |
 | `output/*` | Your generated PDFs |
 | `jds/*` | Your saved job descriptions |

@@ -52,6 +52,7 @@ AI-powered job search automation built on Claude Code: pipeline tracking, offer 
 | `data/applications.md` | Application tracker |
 | `data/pipeline.md` | Inbox of pending URLs |
 | `data/scan-history.tsv` | Scanner dedup history |
+| `data/memory.md` | Cross-session memory (preferences, feedback, research cache) |
 | `portals.yml` | Query and company config |
 | `templates/cv-template.html` | HTML template for CVs |
 | `generate-pdf.mjs` | Puppeteer: HTML to PDF |
@@ -67,10 +68,11 @@ AI-powered job search automation built on Claude Code: pipeline tracking, offer 
 2. Does `config/profile.yml` exist (not just profile.example.yml)?
 3. Does `modes/_profile.md` exist (not just _profile.template.md)?
 4. Does `portals.yml` exist (not just templates/portals.example.yml)?
+5. Does `data/memory.md` exist? If yes, read it silently. If no, that's fine -- it will be created when there's something to remember.
 
 If `modes/_profile.md` is missing, copy from `modes/_profile.template.md` silently. This is the user's customization file — it will never be overwritten by updates.
 
-**If ANY of these is missing, enter onboarding mode.** Do NOT proceed with evaluations, scans, or any other mode until the basics are in place. Guide the user step by step:
+**If any of checks 1-4 are missing, enter onboarding mode.** Do NOT proceed with evaluations, scans, or any other mode until the basics are in place. Guide the user step by step:
 
 #### Step 1: CV (required)
 If `cv.md` is missing, ask:
@@ -93,7 +95,7 @@ If `config/profile.yml` is missing, copy from `config/profile.example.yml` and t
 >
 > I'll set everything up for you."
 
-Fill in `config/profile.yml` with their answers. For archetypes, map their target roles to the closest matches and update `modes/_shared.md` if needed.
+Fill in `config/profile.yml` with their answers. For archetypes, map their target roles to the closest matches and update `modes/_profile.md` with the appropriate framing.
 
 #### Step 3: Portals (recommended)
 If `portals.yml` is missing:
@@ -123,9 +125,9 @@ After the basics are set up, proactively ask for more context. The more you know
 >
 > The more context you give me, the better I filter. Think of it as onboarding a recruiter — the first week I need to learn about you, then I become invaluable."
 
-Store any insights the user shares in `config/profile.yml` (under narrative) or in `article-digest.md` if they share proof points. Update `modes/_shared.md` archetypes and framing if what they describe doesn't match the defaults.
+Store any insights the user shares in `config/profile.yml` (under narrative) or in `article-digest.md` if they share proof points. Update `modes/_profile.md` archetypes and framing if what they describe doesn't match the defaults.
 
-**After every evaluation, learn.** If the user says "this score is too high, I wouldn't apply here" or "you missed that I have experience in X", update your understanding. Adjust the framing in `_shared.md` or add notes to `profile.yml`. The system should get smarter with every interaction.
+**After every evaluation, learn.** If the user says "this score is too high, I wouldn't apply here" or "you missed that I have experience in X", update your understanding. Record the feedback in `data/memory.md` (under "Learned Preferences" or "Evaluation Feedback"). If the feedback implies a profile change, also update `modes/_profile.md` or `config/profile.yml`. The system should get smarter with every interaction. NEVER write user-specific learnings to `modes/_shared.md`.
 
 #### Step 6: Ready
 Once all files exist, confirm:
@@ -154,6 +156,43 @@ This system is designed to be customized by YOU (Claude). When the user asks you
 - "Update my profile" → edit `config/profile.yml`
 - "Change the CV template design" → edit `templates/cv-template.html`
 - "Adjust the scoring weights" → edit `modes/_shared.md` and `batch/batch-prompt.md`
+
+### Memory System
+
+`data/memory.md` is the cross-session memory file. It persists learned preferences, evaluation feedback, company research cache, and session context so future sessions start smarter.
+
+**READ:** At session start (step 5 in onboarding checks). If the file exists, read it silently to restore context.
+
+**WRITE:** Whenever the user gives feedback that should persist across sessions:
+- Scoring calibration ("you scored this too high/low")
+- Preference discovery ("I don't want roles that require Java")
+- Research worth caching (company culture notes, comp benchmarks)
+- Evaluation patterns ("always check for visa sponsorship")
+
+Append to the appropriate section. Don't rewrite the whole file -- add entries incrementally.
+
+**CREATE:** On first write. Don't ship an empty file in the repo. When you need to write the first entry, create the file with this structure:
+```markdown
+# Memory
+
+## Learned Preferences
+<!-- Scoring calibrations, role preferences, deal-breakers discovered through usage -->
+
+## Evaluation Feedback
+<!-- Specific feedback on past evaluations that should inform future ones -->
+
+## Research Cache
+<!-- Company/market research worth preserving across sessions -->
+
+## Session Context
+<!-- Anything else worth remembering -->
+```
+
+**Housekeeping:**
+- Keep entries concise (1-2 lines each)
+- Date-stamp entries when timing matters (e.g., comp benchmarks)
+- If a section grows beyond ~30 entries, summarize older ones
+- NEVER store secrets, passwords, or API keys in this file
 
 ### Language Modes
 
