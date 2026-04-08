@@ -224,6 +224,7 @@ Default modes are in `modes/` (English). Additional language-specific modes are 
 | Processes pending URLs | `pipeline` |
 | Batch processes offers | `batch` |
 | Asks about rejection patterns or wants to improve targeting | `patterns` |
+| Wants to update the system | `update` |
 
 ### CV Source of Truth
 
