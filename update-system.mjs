@@ -395,7 +395,13 @@ function rollback() {
     }
 
     if (restored.length > 0) addPaths(restored);
-    git('commit', '-m', `chore: rollback system files from ${latest}`);
+    try {
+      git('commit', '-m', `chore: rollback system files from ${latest}`);
+    } catch {
+      // Nothing to commit — working tree already matched the backup
+      // (e.g. user ran rollback twice). Mirror apply()'s no-op handling
+      // so the outer catch doesn't surface "Rollback failed".
+    }
 
     console.log(`Rollback complete. Restored ${restored.length} path(s) from ${latest}, removed ${removed.length} path(s) added after the backup.`);
     console.log('Your data (CV, profile, tracker, reports) was not affected.');
