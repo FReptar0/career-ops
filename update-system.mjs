@@ -299,7 +299,17 @@ async function apply() {
       // not silently proceed — that would let a real violation slip
       // through. Revert what we already applied and abort.
       console.error(`Aborting: could not validate user-layer safety (${err.message}).`);
-      revertPaths(updated);
+      try {
+        revertPaths(updated);
+      } catch (revertErr) {
+        // If the revert itself fails (likely whatever broke `git
+        // status` also broke `git checkout --`), don't lose the
+        // original validation error — chain it via `cause`.
+        throw new Error(
+          `Validation failed (${err.message}) and revert also failed (${revertErr.message})`,
+          { cause: err },
+        );
+      }
       throw err;
     }
 
