@@ -276,8 +276,13 @@ async function apply() {
       }
     }
 
-    // 4. Validate: check NO user files were touched
-    let userFileTouched = false;
+    // 4. Validate: check NO user files were touched.
+    //
+    // Track which user paths the update unexpectedly touched so we
+    // can revert them too — reverting only `updated` would leave the
+    // repo in a half-applied state with the user-layer changes still
+    // staged.
+    const violatedUserPaths = new Set();
     try {
       for (const entry of gitStatusEntries()) {
         const file = entry.path;
@@ -285,18 +290,30 @@ async function apply() {
         for (const userPath of USER_PATHS) {
           if (file.startsWith(userPath)) {
             console.error(`SAFETY VIOLATION: User file was modified: ${file}`);
-            userFileTouched = true;
+            violatedUserPaths.add(file);
           }
         }
       }
-    } catch {
-      // git status failed, skip validation
+    } catch (err) {
+      // Fail closed: if we can't validate the safety invariant we must
+      // not silently proceed — that would let a real violation slip
+      // through. Revert what we already applied and abort.
+      console.error(`Aborting: could not validate user-layer safety (${err.message}).`);
+      revertPaths(updated);
+      throw err;
     }
 
-    if (userFileTouched) {
+    if (violatedUserPaths.size > 0) {
       console.error('Aborting: user files were touched. Rolling back...');
-      revertPaths(updated);
-      process.exit(1);
+      // Revert BOTH the system-layer updates and the user-layer paths
+      // the update unexpectedly modified — otherwise the repo is left
+      // in a half-applied state.
+      revertPaths([...updated, ...violatedUserPaths]);
+      // `throw` (not `process.exit`) so the outer `finally` runs and
+      // .update-lock is removed. Exiting here would leak the lock and
+      // permanently block subsequent updates until the user deletes
+      // it manually.
+      throw new Error('Update aborted: user files were touched.');
     }
 
     // 5. Install any new dependencies
@@ -378,12 +395,20 @@ function dismiss() {
 
 const cmd = process.argv[2] || 'check';
 
-switch (cmd) {
-  case 'check': await check(); break;
-  case 'apply': await apply(); break;
-  case 'rollback': rollback(); break;
-  case 'dismiss': dismiss(); break;
-  default:
-    console.log('Usage: node update-system.mjs [check|apply|rollback|dismiss]');
-    process.exit(1);
+try {
+  switch (cmd) {
+    case 'check': await check(); break;
+    case 'apply': await apply(); break;
+    case 'rollback': rollback(); break;
+    case 'dismiss': dismiss(); break;
+    default:
+      console.log('Usage: node update-system.mjs [check|apply|rollback|dismiss]');
+      process.exit(1);
+  }
+} catch (err) {
+  // Subcommands now `throw` on aborts so their outer `finally` blocks
+  // run (e.g. apply() must release `.update-lock`). Print a clean
+  // message here instead of letting Node spit out a stack trace.
+  console.error(err.message || err);
+  process.exit(1);
 }
