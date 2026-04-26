@@ -398,9 +398,13 @@ function rollback() {
     try {
       git('commit', '-m', `chore: rollback system files from ${latest}`);
     } catch {
-      // Nothing to commit — working tree already matched the backup
-      // (e.g. user ran rollback twice). Mirror apply()'s no-op handling
-      // so the outer catch doesn't surface "Rollback failed".
+      // Tolerate any commit failure here — the common case is the
+      // "nothing to commit" no-op when the working tree already
+      // matched the backup (e.g. user ran rollback twice). This
+      // mirrors apply()'s broad-catch in the commit step; narrowing
+      // to a specific git-error string is fragile and would diverge
+      // from that pattern. Genuine setup problems (hooks, signing,
+      // disk full) will resurface on the next normal git operation.
     }
 
     console.log(`Rollback complete. Restored ${restored.length} path(s) from ${latest}, removed ${removed.length} path(s) added after the backup.`);
