@@ -16,7 +16,7 @@
  */
 
 import { execFileSync, execSync } from 'child_process';
-import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, unlinkSync, rmSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -356,6 +356,12 @@ function rollback() {
     //       so the working tree mirrors the backup state.
     //   (b) anything else — propagate so we don't silently leave the
     //       working tree in a partially-restored state.
+    //
+    // Limitation: `git checkout <ref> -- <dir>` restores blobs from
+    // the backup tree but doesn't remove files that were added INSIDE
+    // an already-tracked directory between backup and rollback. Rolling
+    // back per-file via `git diff --name-status <backup>` would catch
+    // that but is a larger change; tracked separately if it ever bites.
     const restored = [];
     const removed = [];
     for (const path of SYSTEM_PATHS) {
@@ -374,8 +380,16 @@ function rollback() {
           throw err;
         }
         // Path was introduced by a later apply() — remove it so the
-        // tree truly matches the backup. `git rm` stages the deletion.
+        // tree truly matches the backup. `git rm` stages the deletion
+        // for tracked files; `rmSync` cleans up the untracked-but-
+        // on-disk case (e.g. an apply() that crashed between checkout
+        // and commit, leaving the path untracked locally).
         git('rm', '-r', '-f', '--ignore-unmatch', '--', pathspec);
+        try {
+          rmSync(join(ROOT, pathspec), { recursive: true, force: true });
+        } catch {
+          // Already gone, or not present on disk — fine.
+        }
         removed.push(pathspec);
       }
     }
@@ -383,7 +397,7 @@ function rollback() {
     if (restored.length > 0) addPaths(restored);
     git('commit', '-m', `chore: rollback system files from ${latest}`);
 
-    console.log(`Rollback complete. System files restored from ${latest}.`);
+    console.log(`Rollback complete. Restored ${restored.length} path(s) from ${latest}, removed ${removed.length} path(s) added after the backup.`);
     console.log('Your data (CV, profile, tracker, reports) was not affected.');
   } catch (err) {
     console.error('Rollback failed:', err.message);
