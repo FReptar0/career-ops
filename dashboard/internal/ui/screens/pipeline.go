@@ -188,6 +188,10 @@ func (m PipelineModel) WithReloadedData(apps []model.CareerApplication, metrics 
 	reloaded.sortMode = m.sortMode
 	reloaded.activeTab = m.activeTab
 	reloaded.viewMode = m.viewMode
+	// Preserve search state across refresh — otherwise pressing `r` silently drops a
+	// committed query and the user loses their place mid-investigation.
+	reloaded.searchQuery = m.searchQuery
+	reloaded.searchInput = m.searchInput
 	reloaded.applyFilterAndSort()
 	reloaded.CopyReportCache(&m)
 

@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/santifer/career-ops/dashboard/internal/model"
 	"github.com/santifer/career-ops/dashboard/internal/theme"
 )
@@ -181,6 +183,111 @@ func TestSearchIsCaseInsensitive(t *testing.T) {
 		if len(pm.filtered) != 1 {
 			t.Fatalf("expected case-insensitive match for %q, got %d rows", q, len(pm.filtered))
 		}
+	}
+}
+
+func TestSearchEnterCommitsAndEscClearsCommittedQuery(t *testing.T) {
+	apps := []model.CareerApplication{
+		{Company: "Stripe", Role: "Backend Engineer", Status: "Evaluated", Score: 4.6},
+		{Company: "Anthropic", Role: "AI Engineer", Status: "Evaluated", Score: 4.8},
+	}
+
+	pm := NewPipelineModel(theme.NewTheme("catppuccin-mocha"), apps, model.PipelineMetrics{Total: len(apps)}, "..", 120, 40)
+
+	// Open input and type "stripe".
+	pm, _ = pm.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	if !pm.searchInput {
+		t.Fatal("expected `/` to open search input")
+	}
+	for _, r := range "stripe" {
+		pm, _ = pm.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
+	if pm.searchQuery != "stripe" {
+		t.Fatalf("expected query to live-update to 'stripe', got %q", pm.searchQuery)
+	}
+	if len(pm.filtered) != 1 || pm.filtered[0].Company != "Stripe" {
+		t.Fatalf("expected live filter to leave only Stripe, got %+v", pm.filtered)
+	}
+
+	// Enter commits — input closes, query stays.
+	pm, _ = pm.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if pm.searchInput {
+		t.Fatal("expected Enter to close input")
+	}
+	if pm.searchQuery != "stripe" {
+		t.Fatalf("expected Enter to keep committed query, got %q", pm.searchQuery)
+	}
+
+	// Esc on a committed query clears the search and restores the full list.
+	pm, _ = pm.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	if pm.searchQuery != "" {
+		t.Fatalf("expected Esc to clear committed query, got %q", pm.searchQuery)
+	}
+	if len(pm.filtered) != len(apps) {
+		t.Fatalf("expected Esc to restore full list, got %d/%d", len(pm.filtered), len(apps))
+	}
+}
+
+func TestSearchEscInInputCancelsAndClears(t *testing.T) {
+	apps := []model.CareerApplication{
+		{Company: "Stripe", Role: "Backend Engineer", Status: "Evaluated", Score: 4.6},
+	}
+
+	pm := NewPipelineModel(theme.NewTheme("catppuccin-mocha"), apps, model.PipelineMetrics{Total: len(apps)}, "..", 120, 40)
+	pm.searchInput = true
+	pm.searchQuery = "stri"
+	pm.applyFilterAndSort()
+
+	pm, _ = pm.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	if pm.searchInput {
+		t.Fatal("expected Esc in input mode to close input")
+	}
+	if pm.searchQuery != "" {
+		t.Fatalf("expected Esc in input mode to clear in-progress query, got %q", pm.searchQuery)
+	}
+}
+
+func TestSearchResetsCursorOnQueryChange(t *testing.T) {
+	apps := []model.CareerApplication{
+		{Company: "Acme", Role: "Backend Engineer", Status: "Evaluated", Score: 4.0},
+		{Company: "Beta", Role: "Frontend Engineer", Status: "Evaluated", Score: 4.1},
+		{Company: "Gamma", Role: "AI Engineer", Status: "Evaluated", Score: 4.2},
+	}
+
+	pm := NewPipelineModel(theme.NewTheme("catppuccin-mocha"), apps, model.PipelineMetrics{Total: len(apps)}, "..", 120, 40)
+	pm.cursor = 2
+
+	pm, _ = pm.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	pm, _ = pm.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+
+	if pm.cursor != 0 {
+		t.Fatalf("expected cursor to reset to 0 on query change, got %d", pm.cursor)
+	}
+	if pm.scrollOffset != 0 {
+		t.Fatalf("expected scrollOffset to reset to 0 on query change, got %d", pm.scrollOffset)
+	}
+}
+
+func TestSearchStatePreservedAcrossReload(t *testing.T) {
+	initial := []model.CareerApplication{
+		{Company: "Stripe", Role: "Backend", Status: "Evaluated", Score: 4.6},
+		{Company: "Acme", Role: "AI", Status: "Evaluated", Score: 4.0},
+	}
+
+	pm := NewPipelineModel(theme.NewTheme("catppuccin-mocha"), initial, model.PipelineMetrics{Total: len(initial)}, "..", 120, 40)
+	pm.searchQuery = "stripe"
+	pm.applyFilterAndSort()
+
+	refreshed := append([]model.CareerApplication{}, initial...)
+	refreshed = append(refreshed, model.CareerApplication{Company: "Globex", Role: "Platform", Status: "Applied", Score: 4.3})
+
+	reloaded := pm.WithReloadedData(refreshed, model.PipelineMetrics{Total: len(refreshed)})
+
+	if reloaded.searchQuery != "stripe" {
+		t.Fatalf("expected refresh to preserve search query, got %q", reloaded.searchQuery)
+	}
+	if len(reloaded.filtered) != 1 || reloaded.filtered[0].Company != "Stripe" {
+		t.Fatalf("expected refresh+search to keep filter applied, got %+v", reloaded.filtered)
 	}
 }
 
