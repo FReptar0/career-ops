@@ -191,7 +191,8 @@ Save the full report to `interview-prep/{company-slug}-{role-slug}.md` with this
 # Interview Intel: {Company} — {Role}
 
 **URL:** {job posting URL or company careers URL, or "N/A" if recruiter-sourced}
-**Report:** {link to evaluation report if exists, or "N/A"} (legitimacy tier lives there)
+**Legitimacy:** {tier copied from the evaluation report's Block G, or "unknown" if no report exists}
+**Report:** {link to evaluation report if exists, or "N/A"}
 **Researched:** {YYYY-MM-DD}
 **Sources:** {N} Glassdoor reviews, {N} Blind posts, {N} other
 **Audiences covered:** {recruiter-screen, hiring-manager, peer-tech, panel-mixed}
