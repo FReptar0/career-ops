@@ -217,14 +217,14 @@ function appendToPipeline(offers) {
   writeFileSync(PIPELINE_PATH, text, 'utf-8');
 }
 
-function appendToScanHistory(offers, date) {
+function appendToScanHistory(offers, date, status = 'added') {
   // Ensure file + header exist
   if (!existsSync(SCAN_HISTORY_PATH)) {
     writeFileSync(SCAN_HISTORY_PATH, 'url\tfirst_seen\tportal\ttitle\tcompany\tstatus\n', 'utf-8');
   }
 
   const lines = offers.map(o =>
-    `${o.url}\t${date}\t${o.source}\t${o.title}\t${o.company}\tadded`
+    `${o.url}\t${date}\t${o.source}\t${o.title}\t${o.company}\t${status}`
   ).join('\n') + '\n';
 
   appendFileSync(SCAN_HISTORY_PATH, lines, 'utf-8');
@@ -256,11 +256,10 @@ async function verifyOffers(offers) {
   const { checkUrlLiveness } = await import('./liveness-browser.mjs');
 
   const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage();
-
   const verified = [];
   const expired = [];
   try {
+    const page = await browser.newPage();
     // Sequential — project rule: never Playwright in parallel
     for (const offer of offers) {
       const { result, reason } = await checkUrlLiveness(page, offer.url);
@@ -370,10 +369,7 @@ async function main() {
     appendToScanHistory(verifiedOffers, date);
   }
   if (!dryRun && expiredOffers.length > 0) {
-    appendToScanHistory(
-      expiredOffers.map(o => ({ ...o, source: `${o.source} (expired)` })),
-      date,
-    );
+    appendToScanHistory(expiredOffers, date, 'skipped_expired');
   }
 
   // 6. Print summary
