@@ -21,7 +21,7 @@ The first round of most processes is a recruiter / HR screen, not a technical pa
 | Query | What to extract |
 |-------|-----------------|
 | `"{company} {role} salary site:levels.fyi OR site:glassdoor.com/Salary"` | Comp ranges (base / equity / bonus) by level |
-| `"{company} interview process site:glassdoor.com"` (filter for recruiter / HR screen) | Process timeline, screening criteria, common screening questions, recruiter behavior |
+| `"{company} interview process site:glassdoor.com"` then manually filter retrieved reviews to those describing the recruiter / HR screen | Process timeline, screening criteria, common screening questions, recruiter behavior |
 | `"{company} site:teamblind.com" comp negotiation OR offer` | Candid comp/leverage details, what recruiters push back on |
 | `"{company} careers"` + `"{company} benefits"` | Official comp/benefits framing, work-auth/visa policy, location policy |
 
@@ -39,7 +39,7 @@ The first round of most processes is a recruiter / HR screen, not a technical pa
 |-------|-----------------|
 | `"{company} {role} interview questions site:glassdoor.com"` | Actual questions asked, difficulty rating, experience rating, number of rounds, offer/reject ratio |
 | `"{company} {role} interview site:leetcode.com/discuss"` | Specific coding/technical problems, system design topics, round structure |
-| `"{company} interview process site:teamblind.com"` (filter for tech rounds) | Hiring bar, recent technical interview data points |
+| `"{company} interview process site:teamblind.com"` then manually filter retrieved threads to those describing technical rounds | Hiring bar, recent technical interview data points |
 
 If the company is small or obscure and yields few results, broaden: search for the role archetype at similar-stage companies, and note that intel is sparse. Do the recruiter-screen queries even when intel is sparse — comp/logistics data exists for almost every company.
 
@@ -70,7 +70,14 @@ Classify each round from Step 2 into exactly one audience. The audience drives w
 | `peer-tech`         | IC technical (live coding, system design, take-home review) | Depth + collaboration on the actual stack                       |
 | `panel-mixed`       | Onsite / loop with multiple interviewer types in one block  | Cross-cuts the above                                            |
 
-If `Conducted by` is unknown for a round, infer from duration + position in the process: round 1 short call → `recruiter-screen`; round 2 longer call → `hiring-manager` (default for mid-process); deep technical block → `peer-tech`. Mark inferred audiences with `[inferred]` and keep going — sparse intel is normal early in research.
+If `Conducted by` is unknown for a round, infer cautiously from duration, position, and any signals from the JD or job posting. Common patterns:
+
+- Round 1, short (15–30 min) → almost always `recruiter-screen`.
+- Round 2 — **do not default**. Many companies put a peer-led technical phone screen here, others put the hiring manager. Prefer `peer-tech` if the round is described as "technical screen" or has a coding/system-design component; prefer `hiring-manager` if it's described as a manager / skip-level / leadership conversation; otherwise mark as `panel-mixed [inferred]` and prep both packs.
+- Deep technical block (live coding, system design, take-home review) → `peer-tech`.
+- Onsite / loop with multiple back-to-back rounds → `panel-mixed`.
+
+Mark inferred audiences with `[inferred]` and keep going — sparse intel is normal early in research.
 
 ```markdown
 ## Audience Map
@@ -100,6 +107,8 @@ If round structure is unknown, state that and provide the best available intel o
 ## Step 4 — Likely Questions (per audience)
 
 Group all discovered and inferred questions by the audience that asks them, not by question type. Within each audience, draft candidate-specific answers using `cv.md`, `article-digest.md`, `config/profile.yml`, and `modes/_profile.md`. **Never fabricate questions** — sourced questions must cite, inferred questions must be tagged `[inferred from JD]`.
+
+If any of those profile files are missing, incomplete, or out-of-date, note the gap inline (e.g. "comp target unknown — defer to recruiter band") and proceed with what's available rather than blocking the prep. The mode's value is partial-but-honest output, not perfect-or-nothing.
 
 ### Audience: `recruiter-screen`
 
@@ -132,7 +141,12 @@ This is where the original Technical / Role-Specific buckets live. Peers are eva
 
 ### Audience: `panel-mixed`
 
-Pull material from the three audience packs above per interviewer slot. Flag who-asks-what when the data exists; otherwise label as mixed and prep all three packs.
+Onsite loops and mixed panels rarely give the candidate time to context-switch — preparation has to be pre-routed. For each panel slot:
+
+- **If the interviewer is named in the schedule**, do a quick LinkedIn/blog look-up and tag them to one of the three audiences (recruiter / HM / peer-tech). Then pull from that audience's pack.
+- **If the slot is unlabeled**, prep all three packs but cap each to 3–5 highest-priority items so the candidate isn't drowning in notes.
+- **Hand-off discipline**: tell the candidate explicitly what NOT to repeat verbatim across slots (e.g. the same proof point told identically twice signals scripted answers; vary the angle).
+- **Energy management**: 4-hour onsites burn out novel candidates first. Flag the slot most likely to test depth (usually peer-tech) and reserve the candidate's freshest material for it.
 
 ## Step 5 — Story Bank Mapping
 
@@ -182,6 +196,13 @@ Things to say, do, and avoid — segmented by who's listening. The same fact can
 - **What to lead with**: stack-relevant proof points from `cv.md` / `article-digest.md`.
 - **Things to avoid**: anti-patterns flagged in Glassdoor / Blind reviews specific to this company.
 - **Reverse questions**: on-call rotation, code review norms, deployment cadence, what surprised them when they joined.
+
+### To a mixed panel
+
+- **What to lead with**: a single 2-sentence framing that lands for all three audiences — usually narrative + named team challenge — then let each interviewer steer.
+- **What NOT to repeat**: same proof point told identically across slots; instead, vary the angle (recruiter hears the headline number, HM hears the team-impact framing, peer-tech hears the technical detail).
+- **Vocabulary**: keep recruiter-friendly language (impact, scope) when leadership is in the room; switch to peer-language (architecture, trade-offs, on-call) when only ICs are.
+- **What to avoid**: contradicting yourself across slots about comp, timeline, or what excites you. Interviewers compare notes.
 
 ## Output
 
