@@ -593,15 +593,25 @@ func (m *PipelineModel) applyFilterAndSort() {
 	m.filtered = filtered
 }
 
+// chromeRowsFixed returns the number of fixed chrome rows above/below the body
+// (header + tabs(2) + metrics + sortbar + help + 1 search bar when active).
+// Shared by View() and adjustScroll() so the search-row addition stays in sync.
+func (m PipelineModel) chromeRowsFixed() int {
+	rows := 7 // header + tabs(2) + metrics + sortbar + help + preview baseline
+	if m.searchInput || m.searchQuery != "" {
+		rows++
+	}
+	return rows
+}
+
+// previewBudgetApprox is the approximate row count reserved for the preview block
+// when computing scroll positioning. View() measures the actual rendered preview
+// height; adjustScroll uses this constant to avoid re-rendering on every keystroke.
+const previewBudgetApprox = 5
+
 // adjustScroll updates scrollOffset so the cursor stays visible.
 func (m *PipelineModel) adjustScroll() {
-	// Chrome rows: header + tabs(2) + metrics + sortbar + footer + preview baseline.
-	// Search bar adds one more row whenever the user has an active or in-progress query.
-	chromeRows := 12
-	if m.searchInput || m.searchQuery != "" {
-		chromeRows++
-	}
-	availHeight := m.height - chromeRows
+	availHeight := m.height - m.chromeRowsFixed() - previewBudgetApprox
 	if availHeight < 5 {
 		availHeight = 5
 	}
@@ -661,11 +671,7 @@ func (m PipelineModel) View() string {
 
 	// Calculate available height for body
 	previewLines := strings.Count(preview, "\n") + 1
-	chromeRows := 7 // header + tabs(2) + metrics + sortbar + help + preview baseline
-	if searchBar != "" {
-		chromeRows++
-	}
-	availHeight := m.height - chromeRows - previewLines
+	availHeight := m.height - m.chromeRowsFixed() - previewLines
 	if availHeight < 3 {
 		availHeight = 3
 	}
