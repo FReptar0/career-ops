@@ -229,14 +229,22 @@ func TestSearchEnterCommitsAndEscClearsCommittedQuery(t *testing.T) {
 }
 
 func TestSearchEscInInputCancelsAndClears(t *testing.T) {
+	// Use multiple rows so the test catches a regression where Esc clears the query
+	// but forgets to re-apply the filter — the visible count would stay at 1
+	// otherwise even though the underlying state went stale.
 	apps := []model.CareerApplication{
 		{Company: "Stripe", Role: "Backend Engineer", Status: "Evaluated", Score: 4.6},
+		{Company: "Globex", Role: "Platform Engineer", Status: "Evaluated", Score: 4.0},
+		{Company: "Anthropic", Role: "AI Engineer", Status: "Evaluated", Score: 4.8},
 	}
 
 	pm := NewPipelineModel(theme.NewTheme("catppuccin-mocha"), apps, model.PipelineMetrics{Total: len(apps)}, "..", 120, 40)
 	pm.searchInput = true
 	pm.searchQuery = "stri"
 	pm.applyFilterAndSort()
+	if len(pm.filtered) != 1 {
+		t.Fatalf("setup expected 1 row matching 'stri', got %d", len(pm.filtered))
+	}
 
 	pm, _ = pm.Update(tea.KeyMsg{Type: tea.KeyEsc})
 	if pm.searchInput {
@@ -244,6 +252,9 @@ func TestSearchEscInInputCancelsAndClears(t *testing.T) {
 	}
 	if pm.searchQuery != "" {
 		t.Fatalf("expected Esc in input mode to clear in-progress query, got %q", pm.searchQuery)
+	}
+	if len(pm.filtered) != len(apps) {
+		t.Fatalf("expected Esc to re-expand filtered list to %d rows, got %d", len(apps), len(pm.filtered))
 	}
 }
 

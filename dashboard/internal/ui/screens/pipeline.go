@@ -595,7 +595,13 @@ func (m *PipelineModel) applyFilterAndSort() {
 
 // adjustScroll updates scrollOffset so the cursor stays visible.
 func (m *PipelineModel) adjustScroll() {
-	availHeight := m.height - 12 // header + tabs(2) + metrics + sortbar + footer + preview
+	// Chrome rows: header + tabs(2) + metrics + sortbar + footer + preview baseline.
+	// Search bar adds one more row whenever the user has an active or in-progress query.
+	chromeRows := 12
+	if m.searchInput || m.searchQuery != "" {
+		chromeRows++
+	}
+	availHeight := m.height - chromeRows
 	if availHeight < 5 {
 		availHeight = 5
 	}
